@@ -1,0 +1,23 @@
+{
+  "name": "orange-velocity-execution-playbook",
+  "version": "1.0.0",
+  "description": "**Target:** Scale to PHP 500k MRR in 6 months **For:** Julius, Shekinah & Kiannah **Date:** November 2025",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.1.0",
+    "vite": "^7.1.12"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  }
+}
