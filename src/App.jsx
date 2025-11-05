@@ -1,7 +1,115 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const App = () => {
   const [activeMonth, setActiveMonth] = useState(0);
+  const [completedTasks, setCompletedTasks] = useState({});
+  const [showGuides, setShowGuides] = useState({});
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [startDate, setStartDate] = useState(() => {
+    return localStorage.getItem('playbookStartDate') || '2025-11-01';
+  });
+  const [aiPlanGenerated, setAiPlanGenerated] = useState(false);
+
+  // Track scroll progress
+  useEffect(() => {
+    const handleScroll = () => {
+      const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = (window.scrollY / totalHeight) * 100;
+      setScrollProgress(progress);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Auto-switch to current month on load
+  useEffect(() => {
+    const status = getCurrentStatus();
+    setActiveMonth(status.currentMonthIndex);
+  }, []);
+
+  // Calculate overall progress
+  const getOverallProgress = () => {
+    const totalTasks = months.reduce((acc, month) => acc + month.tasks.length, 0);
+    const completedCount = Object.keys(completedTasks).filter(key => completedTasks[key]).length;
+    return Math.round((completedCount / totalTasks) * 100);
+  };
+
+  const getMonthProgress = (monthIndex) => {
+    const month = months[monthIndex];
+    const completedInMonth = month.tasks.filter((_, taskIndex) =>
+      completedTasks[`${monthIndex}-${taskIndex}`]
+    ).length;
+    return Math.round((completedInMonth / month.tasks.length) * 100);
+  };
+
+  // Calculate current status based on start date
+  const getCurrentStatus = () => {
+    const start = new Date(startDate);
+    const today = new Date();
+    const diffTime = Math.abs(today - start);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    const currentMonthIndex = Math.floor(diffDays / 30);
+    const daysIntoMonth = diffDays % 30;
+    const daysInMonth = 30;
+    const daysLeft = daysInMonth - daysIntoMonth;
+
+    return {
+      currentMonthIndex: Math.min(currentMonthIndex, 5),
+      daysIntoMonth: Math.max(0, daysIntoMonth),
+      daysLeft: Math.max(0, daysLeft),
+      totalDaysElapsed: diffDays,
+      isOnTrack: activeMonth === Math.min(currentMonthIndex, 5)
+    };
+  };
+
+  // Generate AI Plan (simulated)
+  const generateAiPlan = () => {
+    setTimeout(() => {
+      setAiPlanGenerated(true);
+      localStorage.setItem('aiPlanGenerated', 'true');
+      alert('✅ AI Plan Generated!\n\nBased on your start date, we\'ve optimized your 6-month roadmap:\n\n• Adjusted milestone timelines\n• Personalized task priorities\n• Suggested team hiring schedule\n• Optimized revenue targets');
+    }, 1000);
+  };
+
+  // Load AI plan status on mount
+  useEffect(() => {
+    const generated = localStorage.getItem('aiPlanGenerated') === 'true';
+    setAiPlanGenerated(generated);
+  }, []);
+
+  const toggleTask = (monthIndex, taskIndex) => {
+    const key = `${monthIndex}-${taskIndex}`;
+    setCompletedTasks(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  const toggleGuide = (monthIndex, taskIndex) => {
+    const key = `${monthIndex}-${taskIndex}`;
+    setShowGuides(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  const switchMonth = (monthIndex) => {
+    setActiveMonth(monthIndex);
+  };
+
+  const resetProgress = () => {
+    if (window.confirm('Are you sure? This will reset all checkboxes.')) {
+      setCompletedTasks({});
+      setShowGuides({});
+    }
+  };
+
+  const downloadPDF = () => {
+    window.print();
+  };
 
   const months = [
     {
@@ -353,215 +461,291 @@ const App = () => {
     },
   ];
 
-  return (
-    <div style={styles.app}>
-      <header style={styles.header}>
-        <h1>Orange Velocity - 6 Month Execution Playbook</h1>
-        <p>From zero to PHP 500k MRR</p>
-      </header>
-
-      <div style={styles.tabs}>
-        {months.map((month, index) => (
-          <button
-            key={index}
-            onClick={() => setActiveMonth(index)}
-            style={activeMonth === index ? styles.activeTab : styles.tab}
-          >
-            {month.icon} {month.title}
-          </button>
-        ))}
-      </div>
-
-      <div style={styles.content}>
-        <div style={styles.monthHeader}>
-          <h2>
-            {months[activeMonth].icon} {months[activeMonth].title}
-          </h2>
-          <p>{months[activeMonth].subtitle}</p>
-        </div>
-
-        <div style={styles.stats}>
-          {months[activeMonth].stats.map((stat, index) => (
-            <div key={index} style={styles.statItem}>
-              <div style={styles.statValue}>{stat.value}</div>
-              <div style={styles.statLabel}>{stat.label}</div>
-            </div>
-          ))}
-        </div>
-
-        <div style={styles.tasks}>
-          {months[activeMonth].tasks.map((task, index) => (
-            <TaskCard key={index} task={task} />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const TaskCard = ({ task }) => {
-  const [showGuide, setShowGuide] = useState(false);
+  const status = getCurrentStatus();
 
   return (
-    <div style={styles.taskCard}>
-      <div style={styles.taskHeader}>
-        <div style={styles.taskCheckbox}>✓</div>
-        <div style={styles.taskContent}>
-          <h3 style={styles.taskTitle}>{task.title}</h3>
-          <p style={styles.taskDescription}>{task.description}</p>
-        </div>
-      </div>
+    <div className="app-container">
+      {/* Floating Toggle Button */}
       <button
-        onClick={() => setShowGuide(!showGuide)}
-        style={styles.toggleButton}
+        className="floating-toggle"
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        title={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
       >
-        {showGuide ? '− Hide Guide' : '+ Show Guide'}
+        {sidebarOpen ? '←' : '→'}
       </button>
-      {showGuide && (
-        <div style={styles.guide}>
-          <strong>Implementation Guide:</strong>
-          <ol>
-            {task.guide.map((item, index) => (
-              <li key={index}>{item}</li>
-            ))}
-          </ol>
+
+      {/* Sidebar */}
+      <div className={`toc-sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
+        <div className="sidebar-header">
+          <div className="sidebar-brand">
+            <div className="brand-icon">OV</div>
+            <span>Orange Velocity</span>
+          </div>
         </div>
-      )}
+
+        {/* Current Status */}
+        <div className="status-card">
+          <div className="status-label">Current Stage</div>
+          <div className="status-month">
+            <span className="status-icon">{months[status.currentMonthIndex]?.icon}</span>
+            <span className="status-text">{months[status.currentMonthIndex]?.title}</span>
+          </div>
+          <div className="status-days">
+            <span className="days-number">{status.daysLeft}</span>
+            <span className="days-label">days left</span>
+          </div>
+          <div className="status-divider"></div>
+          <div className="overall-progress-mini">
+            <div className="progress-row">
+              <span>Overall Progress</span>
+              <strong>{getOverallProgress()}%</strong>
+            </div>
+            <div className="progress-bar-mini">
+              <div className="progress-fill-mini" style={{width: `${getOverallProgress()}%`}}></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        {!aiPlanGenerated && (
+          <div className="ai-setup-card">
+            <button className="ai-setup-btn" onClick={generateAiPlan}>
+              <span className="ai-icon">⚡</span>
+              <span>Generate AI Plan</span>
+            </button>
+          </div>
+        )}
+
+        {aiPlanGenerated && (
+          <div className="plan-status">
+            <div className="plan-status-item">
+              <span className="plan-icon">✓</span>
+              <span>AI Plan Active</span>
+            </div>
+          </div>
+        )}
+
+        {/* Start Date */}
+        <div className="date-setter">
+          <label>Start Date</label>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => {
+              setStartDate(e.target.value);
+              localStorage.setItem('playbookStartDate', e.target.value);
+            }}
+          />
+        </div>
+
+        {/* Months Navigation */}
+        <div className="months-nav">
+          {months.map((month, index) => (
+            <button
+              key={index}
+              className={`month-nav-item ${activeMonth === index ? 'active' : ''}`}
+              onClick={() => switchMonth(index)}
+              title={month.subtitle}
+            >
+              <span className="month-nav-icon">{month.icon}</span>
+              <div className="month-nav-content">
+                <div className="month-nav-title">Month {index + 1}</div>
+                <div className="month-nav-subtitle">{month.subtitle.substring(0, 30)}...</div>
+              </div>
+              <div className="month-nav-progress">
+                <div className="mini-progress-bar">
+                  <div
+                    className="mini-progress-fill"
+                    style={{width: `${getMonthProgress(index)}%`}}
+                  ></div>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className={`main-content ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
+        {/* Scroll Progress Bar */}
+        <div className="scroll-progress-bar">
+          <div className="scroll-progress-fill" style={{width: `${scrollProgress}%`}}></div>
+        </div>
+
+        {/* Status Indicator */}
+        <div className="status-indicator">
+          <div className="status-indicator-content">
+            <div className={`status-badge ${status.isOnTrack ? 'on-track' : 'behind'}`}>
+              {status.isOnTrack ? '✓ On Track' : '⚠ Behind Schedule'}
+            </div>
+            <div className="status-details">
+              <span>Day {status.totalDaysElapsed} of 180</span>
+              <span className="separator">•</span>
+              <span>Expected: Month {status.currentMonthIndex + 1}</span>
+              <span className="separator">•</span>
+              <span>Actual: Month {activeMonth + 1}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Hero Section */}
+        <section className="hero">
+          <div className="container">
+            <div className="hero-content">
+              <h1>The Ultimate <span className="highlight">6-Month Execution</span> Playbook</h1>
+              <p className="hero-subtitle">From zero to PHP 500k MRR with step-by-step tasks, proven strategies, and detailed implementation guides.</p>
+
+              <div className="hero-stats">
+                <div className="hero-stat">
+                  <div className="stat-number">6</div>
+                  <div className="stat-label">Months</div>
+                </div>
+                <div className="hero-stat">
+                  <div className="stat-number">24</div>
+                  <div className="stat-label">Tasks</div>
+                </div>
+                <div className="hero-stat">
+                  <div className="stat-number">3</div>
+                  <div className="stat-label">Tiers</div>
+                </div>
+                <div className="hero-stat">
+                  <div className="stat-number">500k+</div>
+                  <div className="stat-label">PHP MRR</div>
+                </div>
+              </div>
+
+              <div className="hero-cta">
+                <button className="btn-primary" onClick={() => switchMonth(status.currentMonthIndex)}>
+                  🚀 Go to Current Month
+                </button>
+                <button className="btn-secondary" onClick={downloadPDF}>
+                  📄 Download PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Month Detail Section */}
+        <section className="month-detail">
+          <div className="container">
+            <div className={`month-detail-content active`}>
+              {/* Month Header */}
+              <div className="month-detail-header">
+                <div className="month-icon-large">{months[activeMonth].icon}</div>
+                <div className="month-header-content">
+                  <div className="month-badge">Month {activeMonth + 1} • {getMonthProgress(activeMonth)}% Complete</div>
+                  <h2>{months[activeMonth].title}</h2>
+                  <p>{months[activeMonth].subtitle}</p>
+                </div>
+              </div>
+
+              <div className="month-detail-grid">
+                {/* Left Column: Checklist */}
+                <div className="month-detail-left">
+                  <div className="detail-card">
+                    <div className="detail-card-header">
+                      <h3>📋 Task Checklist</h3>
+                      <div className="task-progress-small">
+                        <span>{months[activeMonth].tasks.filter((_, taskIndex) => completedTasks[`${activeMonth}-${taskIndex}`]).length}/{months[activeMonth].tasks.length}</span>
+                      </div>
+                    </div>
+
+                    <div className="tasks-grid">
+                      {months[activeMonth].tasks.map((task, taskIndex) => {
+                        const isCompleted = completedTasks[`${activeMonth}-${taskIndex}`];
+                        const guideVisible = showGuides[`${activeMonth}-${taskIndex}`];
+
+                        return (
+                          <div
+                            key={taskIndex}
+                            className={`task-card ${isCompleted ? 'completed' : ''}`}
+                          >
+                            <div className="task-card-header" onClick={() => toggleTask(activeMonth, taskIndex)}>
+                              <div className={`task-card-checkbox ${isCompleted ? 'checked' : ''}`}>
+                                {isCompleted && '✓'}
+                              </div>
+                              <div className="task-card-info">
+                                <h4>{task.title}</h4>
+                                <p>{task.description}</p>
+                              </div>
+                              <button
+                                className="task-card-toggle"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleGuide(activeMonth, taskIndex);
+                                }}
+                              >
+                                {guideVisible ? '−' : '+'}
+                              </button>
+                            </div>
+                            {guideVisible && (
+                              <div className="task-card-guide">
+                                <strong>Implementation Guide:</strong>
+                                <ol>
+                                  {task.guide.map((item, guideIndex) => (
+                                    <li key={guideIndex}>{item}</li>
+                                  ))}
+                                </ol>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column: Resources & Stats */}
+                <div className="month-detail-right">
+                  {/* Month Stats */}
+                  <div className="detail-card">
+                    <div className="detail-card-header">
+                      <h3>📊 Target Metrics</h3>
+                    </div>
+                    <div className="stats-grid">
+                      {months[activeMonth].stats.map((stat, statIndex) => (
+                        <div key={statIndex} className="stat-card">
+                          <div className="stat-value">{stat.value}</div>
+                          <div className="stat-label">{stat.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Key Resources */}
+                  <div className="detail-card">
+                    <div className="detail-card-header">
+                      <h3>🔑 Key Resources</h3>
+                    </div>
+                    <div className="resources-list">
+                      <button className="resource-link" onClick={() => alert('Resource: Implementation Guide')}>
+                        → Implementation Guide
+                      </button>
+                      <button className="resource-link" onClick={() => alert('Resource: Templates')}>
+                        → Download Templates
+                      </button>
+                      <button className="resource-link" onClick={() => alert('Resource: Best Practices')}>
+                        → Best Practices
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer>
+          <div className="container">
+            <p><strong>Orange Velocity</strong> | 6-Month Interactive Execution Checklist</p>
+            <p>Built for Julius, Shekinah & Kiannah | Target: PHP 500k MRR in 6 months | November 2025</p>
+          </div>
+        </footer>
+      </div>
     </div>
   );
-};
-
-const styles = {
-  app: {
-    maxWidth: '1200px',
-    margin: '0 auto',
-    padding: '2rem',
-    fontFamily: 'Inter, system-ui, sans-serif',
-  },
-  header: {
-    textAlign: 'center',
-    marginBottom: '3rem',
-  },
-  tabs: {
-    display: 'flex',
-    gap: '0.5rem',
-    marginBottom: '2rem',
-    overflowX: 'auto',
-    paddingBottom: '0.5rem',
-  },
-  tab: {
-    padding: '0.75rem 1.25rem',
-    background: 'transparent',
-    border: 'none',
-    borderBottom: '2px solid transparent',
-    cursor: 'pointer',
-    fontWeight: '600',
-    color: '#6b7280',
-    whiteSpace: 'nowrap',
-    transition: 'all 0.2s',
-  },
-  activeTab: {
-    padding: '0.75rem 1.25rem',
-    background: 'transparent',
-    border: 'none',
-    borderBottom: '2px solid #ff6b35',
-    cursor: 'pointer',
-    fontWeight: '600',
-    color: '#ff6b35',
-    whiteSpace: 'nowrap',
-    transition: 'all 0.2s',
-  },
-  content: {
-    background: '#f8f8f8',
-    border: '1px solid #e5e5e5',
-    borderRadius: '1.25rem',
-    padding: '2rem',
-  },
-  monthHeader: {
-    marginBottom: '2rem',
-    paddingBottom: '1rem',
-    borderBottom: '1px solid #e5e5e5',
-  },
-  stats: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '1.5rem',
-    marginBottom: '2rem',
-    paddingTop: '2rem',
-    borderTop: '1px solid #e5e5e5',
-  },
-  statItem: {
-    textAlign: 'center',
-  },
-  statValue: {
-    fontSize: '1.875rem',
-    fontWeight: '800',
-    color: '#ff6b35',
-    marginBottom: '0.25rem',
-  },
-  statLabel: {
-    fontSize: '0.85rem',
-    color: '#6b7280',
-    fontWeight: '500',
-  },
-  tasks: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1rem',
-  },
-  taskCard: {
-    background: '#ffffff',
-    borderRadius: '0.625rem',
-    padding: '1.5rem',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-  },
-  taskHeader: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: '1rem',
-    marginBottom: '1rem',
-  },
-  taskCheckbox: {
-    width: '20px',
-    height: '20px',
-    border: '2px solid #e5e5e5',
-    borderRadius: '4px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-    marginTop: '2px',
-  },
-  taskContent: {
-    flex: 1,
-  },
-  taskTitle: {
-    fontSize: '1rem',
-    fontWeight: '600',
-    marginBottom: '0.25rem',
-  },
-  taskDescription: {
-    fontSize: '0.875rem',
-    color: '#6b7280',
-  },
-  toggleButton: {
-    fontSize: '0.8rem',
-    color: '#ff6b35',
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    fontWeight: '600',
-    padding: 0,
-  },
-  guide: {
-    marginTop: '1rem',
-    padding: '1rem',
-    background: '#fff5f0',
-    borderLeft: '3px solid #ff6b35',
-    borderRadius: '4px',
-    fontSize: '0.85rem',
-    lineHeight: 1.6,
-  },
 };
 
 export default App;
