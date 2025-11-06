@@ -8,10 +8,13 @@ const GoogleMapWithAnalytics = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState(null);
   const [selectedCity, setSelectedCity] = useState(null);
+  const [hoveredCity, setHoveredCity] = useState(null);
+  const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
   const [showModal, setShowModal] = useState(false);
   const [insights, setInsights] = useState(null);
   const [loadingInsights, setLoadingInsights] = useState(false);
   const markers = useRef([]);
+  const infoWindowRef = useRef(null);
 
   useEffect(() => {
     const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyDhWMnN7iFidd231w67oZ5ChzhHKQ12Muo';
@@ -63,24 +66,7 @@ const GoogleMapWithAnalytics = () => {
     const map = new window.google.maps.Map(mapRef.current, {
       center: { lat: 12.8797, lng: 121.774 },
       zoom: 6,
-      mapTypeId: window.google.maps.MapTypeId.ROADMAP,
-      styles: [
-        {
-          featureType: 'all',
-          elementType: 'geometry',
-          stylers: [{ color: '#242f3e' }]
-        },
-        {
-          featureType: 'all',
-          elementType: 'labels.text.stroke',
-          stylers: [{ color: '#242f3e' }]
-        },
-        {
-          featureType: 'all',
-          elementType: 'labels.text.fill',
-          stylers: [{ color: '#746855' }]
-        }
-      ]
+      mapTypeId: window.google.maps.MapTypeId.SATELLITE
     });
 
     setMapInstance(map);
@@ -110,6 +96,39 @@ const GoogleMapWithAnalytics = () => {
 
       marker.addListener('click', () => {
         handleCityClick(city);
+      });
+
+      marker.addListener('mouseover', (event) => {
+        setHoveredCity(city);
+        
+        // Create info window if not exists
+        if (!infoWindowRef.current) {
+          infoWindowRef.current = new window.google.maps.InfoWindow();
+        }
+        
+        const content = `
+          <div style="padding: 12px; min-width: 200px; color: #333;">
+            <h4 style="margin: 0 0 8px 0; font-size: 16px; color: #FF6B35;">${city.location}</h4>
+            <div style="font-size: 13px; line-height: 1.6;">
+              <div style="margin-bottom: 4px;"><strong>Total Businesses:</strong> ${city.total.toLocaleString()}</div>
+              <div style="margin-bottom: 4px;"><strong>Active Advertisers:</strong> ${city.advertisers.toLocaleString()}</div>
+              <div style="margin-bottom: 4px;"><strong>Growth Rate:</strong> <span style="color: ${growth >= 30 ? '#4CAF50' : '#FF6B35'}; font-weight: 600;">${city.growth}</span></div>
+              <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee; font-size: 12px; color: #666;">
+                💡 Click for detailed analytics
+              </div>
+            </div>
+          </div>
+        `;
+        
+        infoWindowRef.current.setContent(content);
+        infoWindowRef.current.open(map, marker);
+      });
+
+      marker.addListener('mouseout', () => {
+        if (infoWindowRef.current) {
+          infoWindowRef.current.close();
+        }
+        setHoveredCity(null);
       });
 
       markers.current.push(marker);

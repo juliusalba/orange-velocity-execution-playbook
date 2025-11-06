@@ -32,38 +32,44 @@ const SystemStatus = () => {
   };
 
   const checkAllSystems = async () => {
+    console.log('Starting system health check...');
     addLog('Starting system health check...', 'info');
     
-    const results = await Promise.all([
-      checkPerplexityAPI(),
-      checkGoogleMaps(),
-      checkGoogleAnalytics()
-    ]);
+    try {
+      const results = await Promise.all([
+        checkPerplexityAPI(),
+        checkGoogleMaps(),
+        checkGoogleAnalytics()
+      ]);
 
-    const [perplexity, googleMaps, googleAnalytics] = results;
-    
-    const critical = results.filter(r => r.status === 'error').length;
-    const warnings = results.filter(r => r.status === 'warning').length;
-    const healthy = results.filter(r => r.status === 'success').length;
+      const [perplexity, googleMaps, googleAnalytics] = results;
+      
+      const critical = results.filter(r => r.status === 'error').length;
+      const warnings = results.filter(r => r.status === 'warning').length;
+      const healthy = results.filter(r => r.status === 'success').length;
 
-    setStatus({
-      perplexity,
-      googleMaps,
-      googleAnalytics,
-      overall: {
-        status: critical > 0 ? 'error' : warnings > 0 ? 'warning' : 'success',
-        critical,
-        warnings,
-        healthy
+      setStatus({
+        perplexity,
+        googleMaps,
+        googleAnalytics,
+        overall: {
+          status: critical > 0 ? 'error' : warnings > 0 ? 'warning' : 'success',
+          critical,
+          warnings,
+          healthy
+        }
+      });
+
+      if (critical > 0) {
+        addLog(`⚠️ ALERT: ${critical} critical system(s) down!`, 'error');
+      } else if (warnings > 0) {
+        addLog(`⚡ WARNING: ${warnings} system(s) need attention`, 'warning');
+      } else {
+        addLog(`✅ All systems operational`, 'success');
       }
-    });
-
-    if (critical > 0) {
-      addLog(`⚠️ ALERT: ${critical} critical system(s) down!`, 'error');
-    } else if (warnings > 0) {
-      addLog(`⚡ WARNING: ${warnings} system(s) need attention`, 'warning');
-    } else {
-      addLog(`✅ All systems operational`, 'success');
+    } catch (error) {
+      console.error('Error during system check:', error);
+      addLog(`❌ Error during system check: ${error.message}`, 'error');
     }
   };
 

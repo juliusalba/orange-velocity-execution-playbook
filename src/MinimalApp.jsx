@@ -5,8 +5,12 @@ import RoadmapView from './components/RoadmapView';
 import ResourcesView from './components/ResourcesView';
 import MarketUpdates from './components/MarketUpdates';
 import SystemStatus from './components/SystemStatus';
+import AutomationRoadmap from './components/AutomationRoadmap';
+import CityInsightModal from './components/CityInsightModal';
+import AIInsightsChat from './components/AIInsightsChat';
 import { cityData, demographics, psychographics, marketMetrics, analyticsData } from './market-data';
 import { analyticsService } from './services/api';
+import { Map, Bot, BarChart3, TrendingUp, Users, Brain, BookOpen, Sword, Settings, Download } from 'lucide-react';
 import './MinimalApp.css';
 
 const MinimalApp = () => {
@@ -14,6 +18,7 @@ const MinimalApp = () => {
   const [selectedSegment, setSelectedSegment] = useState('all');
   const [hoveredCity, setHoveredCity] = useState(null);
   const [selectedCity, setSelectedCity] = useState(null);
+  const [showCityModal, setShowCityModal] = useState(false);
 
   useEffect(() => {
     analyticsService.init();
@@ -25,14 +30,16 @@ const MinimalApp = () => {
   }, [activeTab]);
 
   const tabs = [
-    { id: 'roadmap', label: '🗺️ Roadmap', icon: '🗺️' },
-    { id: 'overview', label: '📊 Market Intel', icon: '📊' },
-    { id: 'analytics', label: '📈 Analytics', icon: '📈' },
-    { id: 'demographics', label: '👥 Demographics', icon: '👥' },
-    { id: 'psychographics', label: '🧠 Psychographics', icon: '🧠' },
-    { id: 'resources', label: '📚 Resources', icon: '📚' },
-    { id: 'competitive', label: '⚔️ Competitive', icon: '⚔️' },
-    { id: 'status', label: '🔧 System Status', icon: '🔧' }
+    { id: 'roadmap', label: 'Roadmap', icon: <Map size={18} /> },
+    { id: 'automation', label: 'AI Automation', icon: <Bot size={18} /> },
+    { id: 'overview', label: 'Market Intel', icon: <BarChart3 size={18} /> },
+    { id: 'analytics', label: 'Analytics', icon: <TrendingUp size={18} /> },
+    { id: 'demographics', label: 'Demographics', icon: <Users size={18} /> },
+    { id: 'psychographics', label: 'Psychographics', icon: <Brain size={18} /> },
+    { id: 'resources', label: 'Resources', icon: <BookOpen size={18} /> },
+    { id: 'competitive', label: 'Competitive', icon: <Sword size={18} /> },
+    { id: 'insights', label: 'AI Insights', icon: <Bot size={18} /> },
+    { id: 'status', label: 'System Status', icon: <Settings size={18} /> }
   ];
 
   const renderOverview = () => (
@@ -47,14 +54,18 @@ const MinimalApp = () => {
 
       <div className="section">
         <div className="section-header">
-          <h2>📍 City Statistics</h2>
-          <p>Real-time business metrics by location</p>
+          <h2>City Statistics</h2>
+          <p>Real-time business metrics by location • Click for detailed insights</p>
         </div>
         <div className="city-grid">
           {cityData.map((city, index) => (
             <div 
               key={index} 
               className="city-card"
+              onClick={() => {
+                setSelectedCity(city);
+                setShowCityModal(true);
+              }}
               onMouseEnter={() => setHoveredCity(city)}
               onMouseLeave={() => setHoveredCity(null)}
             >
@@ -85,6 +96,7 @@ const MinimalApp = () => {
                   ))}
                 </div>
               )}
+              <div className="city-card-hint">Click for detailed insights →</div>
             </div>
           ))}
         </div>
@@ -298,12 +310,14 @@ const MinimalApp = () => {
   const renderTabContent = () => {
     switch(activeTab) {
       case 'roadmap': return <RoadmapView />;
+      case 'automation': return <AutomationRoadmap />;
       case 'overview': return renderOverview();
       case 'analytics': return renderAnalytics();
       case 'demographics': return renderDemographics();
       case 'psychographics': return renderPsychographics();
       case 'resources': return <ResourcesView />;
       case 'competitive': return renderCompetitive();
+      case 'insights': return <AIInsightsChat />;
       case 'status': return <SystemStatus />;
       default: return <RoadmapView />;
     }
@@ -314,7 +328,7 @@ const MinimalApp = () => {
       <header className="app-header">
         <div className="header-content">
           <div className="header-left">
-            <h1>🚀 Orange Velocity</h1>
+            <h1>Orange Velocity</h1>
             <p>Market Intelligence & Business Analytics Platform</p>
           </div>
           <div className="header-right">
@@ -328,7 +342,10 @@ const MinimalApp = () => {
               <option value="emerging">Emerging Businesses</option>
               <option value="enterprise">Established Enterprises</option>
             </select>
-            <button className="export-btn">📊 Export Data</button>
+            <button className="export-btn">
+              <Download size={16} />
+              Export Data
+            </button>
           </div>
         </div>
       </header>
@@ -341,7 +358,7 @@ const MinimalApp = () => {
             onClick={() => setActiveTab(tab.id)}
           >
             <span className="tab-icon">{tab.icon}</span>
-            <span className="tab-label">{tab.label.replace(tab.icon, '').trim()}</span>
+            <span className="tab-label">{tab.label}</span>
           </button>
         ))}
       </nav>
@@ -351,8 +368,18 @@ const MinimalApp = () => {
       </main>
 
       <footer className="app-footer">
-        <p>🤖 Built for Julius, Shekinah & Kiannah • Last updated: {new Date().toLocaleDateString()}</p>
+        <p>Built for Julius, Shekinah & Kiannah • Last updated: {new Date().toLocaleDateString()}</p>
       </footer>
+
+      {showCityModal && selectedCity && (
+        <CityInsightModal 
+          city={selectedCity} 
+          onClose={() => {
+            setShowCityModal(false);
+            setSelectedCity(null);
+          }} 
+        />
+      )}
     </div>
   );
 };

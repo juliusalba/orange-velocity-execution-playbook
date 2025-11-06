@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import AIResearchProgress from './AIResearchProgress';
 
 const MarketUpdates = () => {
   const [updates, setUpdates] = useState([]);
   const [todaySummary, setTodaySummary] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showResearch, setShowResearch] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState(null);
 
   // Fetch market updates on component mount
   useEffect(() => {
@@ -11,12 +14,21 @@ const MarketUpdates = () => {
     fetchTodaySummary();
   }, []);
 
+  const handleInitiateResearch = () => {
+    setShowResearch(true);
+    setTimeout(() => {
+      fetchMarketUpdates();
+      fetchTodaySummary();
+    }, 12000); // After research animation completes
+  };
+
   const fetchMarketUpdates = async () => {
     const perplexityKey = import.meta.env.VITE_PERPLEXITY_API_KEY;
     
-    if (!perplexityKey) {
+    if (!perplexityKey || perplexityKey === 'your_perplexity_key_here') {
       setUpdates(getFallbackUpdates());
       setLoading(false);
+      setLastUpdate(new Date().toLocaleString());
       return;
     }
 
@@ -47,9 +59,11 @@ const MarketUpdates = () => {
       } else {
         setUpdates(getFallbackUpdates());
       }
+      setLastUpdate(new Date().toLocaleString());
     } catch (error) {
       console.error('Error fetching market updates:', error);
       setUpdates(getFallbackUpdates());
+      setLastUpdate(new Date().toLocaleString());
     }
     
     setLoading(false);
@@ -192,9 +206,26 @@ const MarketUpdates = () => {
 
   return (
     <div className="market-updates-section">
+      <AIResearchProgress 
+        isVisible={showResearch} 
+        onClose={() => setShowResearch(false)} 
+      />
+      
       <div className="market-updates-header">
-        <h3>📊 Latest Market Updates</h3>
-        <p className="date-range">Rolling 7-day insights: {getDateRange()}</p>
+        <div>
+          <h3>📊 Latest Market Updates</h3>
+          <p className="date-range">Rolling 7-day insights: {getDateRange()}</p>
+          {lastUpdate && (
+            <p className="last-update-time">Last updated: {lastUpdate}</p>
+          )}
+        </div>
+        <button 
+          className="initiate-research-btn"
+          onClick={handleInitiateResearch}
+          disabled={loading}
+        >
+          🔬 Initiate AI Research
+        </button>
       </div>
 
       {todaySummary && (
